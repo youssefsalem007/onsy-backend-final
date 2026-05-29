@@ -6,7 +6,7 @@ import AIAnalysis from '../DB/models/AIAnalysis.model.js';
 import { getIO } from '../socket/index.js';
 
 export const triggerRealtimeAnalysis = (userId, eegSessionId = null) => {
-  Promise.all([
+  return Promise.all([
     moodModel.find({ user: userId }).sort({ createdAt: -1 }).limit(10),
     eegSessionId 
       ? EEGReading.find({ sessionId: eegSessionId, userId })

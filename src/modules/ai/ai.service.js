@@ -76,7 +76,11 @@ export const sendMessage = async (req, res, next) => {
     session.updatedAt = Date.now();
     await session.save();
 
-    triggerRealtimeAnalysis(req.auth._id);
+    try {
+      await triggerRealtimeAnalysis(req.auth._id);
+    } catch (e) {
+      console.error("Realtime analysis failed:", e);
+    }
 
     successResponse({
       res,

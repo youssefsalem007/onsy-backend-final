@@ -103,8 +103,12 @@ export const uploadEEGData = (req, res, next) => {
     }
 
     EEGReading.insertMany(readings)
-      .then(inserted => {
-        triggerRealtimeAnalysis(userId, sessionId);
+      .then(async inserted => {
+        try {
+          await triggerRealtimeAnalysis(userId, sessionId);
+        } catch (e) {
+          console.error("Realtime analysis failed:", e);
+        }
         successResponse({
           res,
           status: 201,
