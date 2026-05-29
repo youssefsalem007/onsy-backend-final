@@ -65,7 +65,7 @@ export const triggerRealtimeAnalysis = (userId, eegSessionId = null) => {
     .then(response => response.data)
     .catch(err => {
       console.warn('Realtime AI engine unavailable, using fallback. Error:', err.message);
-      return generateFallbackRealtimeAnalysis(eegMetrics, mappedMoodLogs);
+      return generateFallbackRealtimeAnalysis(eegMetrics, mappedMoodLogs, recentMessages);
     })
     .then(aiResponse => {
       const newAnalysis = new AIAnalysis({
@@ -93,7 +93,7 @@ export const triggerRealtimeAnalysis = (userId, eegSessionId = null) => {
   .catch(err => console.error('Analysis trigger failed:', err));
 };
 
-function generateFallbackRealtimeAnalysis(eeg, logs) {
+function generateFallbackRealtimeAnalysis(eeg, logs, messages) {
   // Simple heuristic based on EEG if available
   let risk = 10;
   let level = 1;
@@ -117,6 +117,37 @@ function generateFallbackRealtimeAnalysis(eeg, logs) {
     }
   }
 
+  if (messages && messages.length > 0) {
+    const recentText = messages[messages.length - 1].content.toLowerCase();
+    const isSad    = ['sad','depressed','cry','hopeless','empty','lonely'].some(w => recentText.includes(w));
+    const isAnx    = ['anxious','worried','panic','nervous','scared','fear'].some(w => recentText.includes(w));
+    const isStress = ['stressed','overwhelmed','tired','exhausted'].some(w => recentText.includes(w));
+    const isHappy  = ['happy','good','great','excited','joy', 'glad'].some(w => recentText.includes(w));
+    const isRisk   = ['suicide','die','hurt myself','end it', 'kill myself', 'kill'].some(w => recentText.includes(w));
+    
+    if (isRisk) { level = 4; dom = 'distress'; risk = 85; }
+    else if (isSad || isAnx) { level = Math.max(level, 3); dom = isSad ? 'sadness' : 'anxiety'; risk = Math.max(risk, 55); }
+    else if (isStress) { level = Math.max(level, 2); dom = 'stress'; risk = Math.max(risk, 30); }
+    else if (isHappy) { level = 1; dom = 'happiness'; risk = 10; }
+  }
+
+  // Calculate base emotion scores
+  let happiness = (level === 1 && dom === 'happiness') ? 0.7 : (level === 1 ? 0.4 : 0.05);
+  let sadness = (dom === 'sadness' || dom === 'sad') ? 0.6 : 0.05;
+  let anxiety = (dom === 'anxiety' || dom === 'stress') ? 0.5 : 0.05;
+  let stress = (eeg && eeg.stress > 0) ? eeg.stress : (level >= 2 ? 0.4 : 0.1);
+  let anger = (dom === 'angry') ? 0.5 : 0.05;
+  let fear = 0.05;
+
+  // Normalize scores to ensure they sum perfectly to 1.0 (100%)
+  const sum = happiness + sadness + anxiety + stress + anger + fear;
+  happiness = +(happiness / sum).toFixed(3);
+  sadness = +(sadness / sum).toFixed(3);
+  anxiety = +(anxiety / sum).toFixed(3);
+  stress = +(stress / sum).toFixed(3);
+  anger = +(anger / sum).toFixed(3);
+  fear = +(fear / sum).toFixed(3);
+
   return {
     dominant_emotion: dom,
     sentiment: level >= 3 ? 'negative' : (level === 2 ? 'neutral' : 'positive'),
@@ -124,12 +155,7 @@ function generateFallbackRealtimeAnalysis(eeg, logs) {
     mental_level: level,
     risk_score: risk,
     emotions: {
-      happiness: level === 1 ? 0.7 : 0.1,
-      sadness: dom === 'sad' ? 0.6 : 0.1,
-      anxiety: dom === 'stress' ? 0.5 : 0.1,
-      stress: (eeg && eeg.stress) ? eeg.stress : (level >= 2 ? 0.5 : 0.1),
-      anger: dom === 'angry' ? 0.6 : 0.05,
-      fear: 0.05
+      happiness, sadness, anxiety, stress, anger, fear
     },
     recommendations: recs
   };

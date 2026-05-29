@@ -127,13 +127,33 @@ function fallbackAnalysis(text) {
   if (isRisk) level = 4;
   else if (isSad || isAnx) level = 3;
   else if (isStress) level = 2;
+  let happiness = isHappy ? 0.7 : 0.05;
+  let sadness = isSad ? 0.6 : 0.05;
+  let anxiety = isAnx ? 0.5 : 0.05;
+  let stress = isStress ? 0.5 : 0.05;
+  let anger = 0.05;
+  let fear = isAnx ? 0.3 : 0.05;
+
+  if (!isRisk && !isSad && !isAnx && !isStress && !isHappy) {
+    happiness = 0.2; sadness = 0.1; anxiety = 0.1; stress = 0.1; anger = 0.1; fear = 0.1;
+  }
+
+  const sum = happiness + sadness + anxiety + stress + anger + fear;
+  
   return {
     dominant_emotion: isRisk ? 'distress' : isSad ? 'sadness' : isAnx ? 'anxiety' : isStress ? 'stress' : isHappy ? 'happiness' : 'neutral',
     sentiment: isHappy ? 'positive' : (isSad || isAnx || isRisk) ? 'negative' : 'neutral',
     sentiment_score: isHappy ? 0.7 : (isSad || isRisk) ? -0.8 : 0,
     mental_level: level,
     risk_score: isRisk ? 85 : isSad ? 55 : isAnx ? 45 : isStress ? 30 : 10,
-    emotions: { happiness: isHappy?0.7:0.1, sadness: isSad?0.7:0.1, anxiety: isAnx?0.7:0.1, stress: isStress?0.6:0.1, anger: 0.05, fear: isAnx?0.4:0.05 }
+    emotions: {
+      happiness: +(happiness / sum).toFixed(3),
+      sadness: +(sadness / sum).toFixed(3),
+      anxiety: +(anxiety / sum).toFixed(3),
+      stress: +(stress / sum).toFixed(3),
+      anger: +(anger / sum).toFixed(3),
+      fear: +(fear / sum).toFixed(3)
+    }
   };
 }
 
