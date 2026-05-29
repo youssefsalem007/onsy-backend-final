@@ -61,8 +61,13 @@ export const triggerRealtimeAnalysis = (userId, eegSessionId = null) => {
       moodLogs: mappedMoodLogs,
       eegMetrics,
       recentMessages
-    }).then(response => {
-      const aiResponse = response.data;
+    }, { timeout: 10000 })
+    .then(response => response.data)
+    .catch(err => {
+      console.warn('Realtime AI engine unavailable, using fallback. Error:', err.message);
+      return generateFallbackRealtimeAnalysis(eegMetrics, mappedMoodLogs);
+    })
+    .then(aiResponse => {
       const newAnalysis = new AIAnalysis({
         userId,
         type: "realtime",
@@ -77,9 +82,55 @@ export const triggerRealtimeAnalysis = (userId, eegSessionId = null) => {
 
       return newAnalysis.save();
     }).then(savedAnalysis => {
-      getIO().to(userId.toString()).emit('analysis:update', savedAnalysis);
+      try {
+        getIO().to(userId.toString()).emit('analysis:update', savedAnalysis);
+      } catch (ioErr) {
+        // Socket.io not initialized on Vercel, ignore emit error
+      }
       return savedAnalysis;
     });
   })
   .catch(err => console.error('Analysis trigger failed:', err));
 };
+
+function generateFallbackRealtimeAnalysis(eeg, logs) {
+  // Simple heuristic based on EEG if available
+  let risk = 10;
+  let level = 1;
+  let dom = 'neutral';
+  let recs = ["Take a deep breath and stay hydrated.", "Consider taking a short 5-minute walk."];
+  
+  if (eeg && (eeg.stress > 0.6 || eeg.excitement > 0.8)) {
+    risk = 45;
+    level = 2;
+    dom = 'stress';
+    recs = ["Your stress levels appear elevated.", "Try a 5-minute guided meditation.", "Listen to calming music."];
+  }
+  
+  if (logs && logs.length > 0) {
+    const recent = logs[0];
+    if (recent.mood === 'Sad' || recent.mood === 'Angry') {
+      risk = Math.max(risk, 60);
+      level = Math.max(level, 3);
+      dom = recent.mood.toLowerCase();
+      recs.push("We noticed you logged a negative mood. Consider reaching out to a friend.");
+    }
+  }
+
+  return {
+    dominant_emotion: dom,
+    sentiment: level >= 3 ? 'negative' : (level === 2 ? 'neutral' : 'positive'),
+    sentiment_score: level >= 3 ? -0.5 : (level === 2 ? 0 : 0.6),
+    mental_level: level,
+    risk_score: risk,
+    emotions: {
+      happiness: level === 1 ? 0.7 : 0.1,
+      sadness: dom === 'sad' ? 0.6 : 0.1,
+      anxiety: dom === 'stress' ? 0.5 : 0.1,
+      stress: (eeg && eeg.stress) ? eeg.stress : (level >= 2 ? 0.5 : 0.1),
+      anger: dom === 'angry' ? 0.6 : 0.05,
+      fear: 0.05
+    },
+    recommendations: recs
+  };
+}
