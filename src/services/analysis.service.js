@@ -56,7 +56,7 @@ export const triggerRealtimeAnalysis = (userId, eegSessionId = null) => {
       timestamp: m.createdAt
     }));
 
-    return axios.post(`${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/analyze/realtime`, {
+    return axios.post(`${process.env.AI_ENGINE_URL || 'http://localhost:8000'}/analyze/realtime`, {
       userId,
       moodLogs: mappedMoodLogs,
       eegMetrics,
@@ -125,10 +125,44 @@ function generateFallbackRealtimeAnalysis(eeg, logs, messages) {
     const isHappy  = ['happy','good','great','excited','joy', 'glad'].some(w => recentText.includes(w));
     const isRisk   = ['suicide','die','hurt myself','end it', 'kill myself', 'kill'].some(w => recentText.includes(w));
     
-    if (isRisk) { level = 4; dom = 'distress'; risk = 85; }
-    else if (isSad || isAnx) { level = Math.max(level, 3); dom = isSad ? 'sadness' : 'anxiety'; risk = Math.max(risk, 55); }
-    else if (isStress) { level = Math.max(level, 2); dom = 'stress'; risk = Math.max(risk, 30); }
-    else if (isHappy) { level = 1; dom = 'happiness'; risk = 10; }
+    if (isRisk) { 
+      level = 4; dom = 'distress'; risk = 85; 
+      recs = [
+        "We hear you, and we want you to know that your life has profound value. Please, pause for a moment and reach out to a mental health professional or emergency service immediately.", 
+        "You don't have to carry this heavy burden all by yourself. There are compassionate crisis counselors available 24/7 who are ready to listen and support you through this dark time.", 
+        "Please remember that this intense pain is temporary, even when it feels endless. Reach out to a trusted loved one or helpline right now—your presence in this world matters deeply."
+      ];
+    }
+    else if (isSad || isAnx) { 
+      level = Math.max(level, 3); dom = isSad ? 'sadness' : 'anxiety'; risk = Math.max(risk, 55); 
+      recs = isSad 
+        ? [
+            "It is completely okay to feel sad; acknowledge your emotions without judgment. Wrap yourself in a warm blanket, make your favorite soothing tea, and allow yourself the space to just be.", 
+            "When the world feels heavy, gentle self-care is vital. Consider reaching out to a close friend who can offer a listening ear and a warm presence when you need it most.",
+            "Sometimes, simply stepping outside to feel the sun on your face or listening to the gentle rhythm of nature can provide a small but meaningful moment of comfort in a sorrowful day."
+          ]
+        : [
+            "Anxiety can feel like a storm, but you are the anchor. Try a grounding exercise: focus on 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, and 1 you can taste to bring yourself back to the present.", 
+            "Find a quiet, safe space to sit comfortably. Place your hand on your heart and take slow, deep breaths—inhale calm for 4 seconds, hold for 4, and exhale the tension for 6 seconds.",
+            "Remember that these anxious thoughts are just passing clouds, not the sky itself. Be gentle with yourself today, and take things one small, manageable step at a time."
+          ];
+    }
+    else if (isStress) { 
+      level = Math.max(level, 2); dom = 'stress'; risk = Math.max(risk, 30); 
+      recs = [
+        "You are carrying a lot right now, and it's essential to give yourself permission to pause. Step away from your current tasks, stretch your body, and take a deeply restorative 10-minute break.", 
+        "Physical movement can help release the built-up tension in your mind and body. Consider a mindful, leisurely walk outside to let the fresh air clear your thoughts and reset your perspective.",
+        "Try writing down everything that is overwhelming you on a piece of paper. Once it's out of your head, you can slowly tackle it piece by piece, or simply leave it there for tomorrow."
+      ];
+    }
+    else if (isHappy) { 
+      level = 1; dom = 'happiness'; risk = 10; 
+      recs = [
+        "It is absolutely wonderful that you are experiencing this joy! Take a moment to fully immerse yourself in this positive energy and let it radiate through your entire body.", 
+        "Keep nurturing whatever it is that brought this light into your day. Sharing your happiness with someone else can magnify these beautiful feelings for both of you.", 
+        "Consider starting a gratitude journal tonight. Documenting the specific things that made you smile today will create a beautiful memory bank you can revisit whenever you need a boost."
+      ];
+    }
   }
 
   // Calculate base emotion scores
