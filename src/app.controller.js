@@ -11,12 +11,14 @@ import moodRouter from "./modules/mood/mood.controller.js";
 import aiRouter from "./modules/ai/ai.controller.js";
 import eegRouter from "./modules/eeg/eeg.controller.js";
 import analysisRouter from "./modules/analysis/analysis.controller.js";
+import { rateLimiter } from "./common/middleware/rateLimiter.js";
 export const app = express();
 
 const isProd = process.env.NODE_ENV === "production";
 
 const bootstrap = async () => {
-  app.use(cors({ origin: "*" }), express.json());
+  app.set("trust proxy", 1);
+  app.use(cors({ origin: "*" }), express.json(), rateLimiter);
 
   app.get("/", (req, res) => {
     res.status(200).json({ message: "welcome to onsy" });
