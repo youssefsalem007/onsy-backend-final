@@ -18,8 +18,8 @@ authRouter.post("/resend-otp", AS.resendOtp);
 authRouter.post("/forget-password", validation(AV.forgetPasswordSchema), AS.forgetPassword);
 authRouter.post("/verify-forget-password-otp", validation(AV.verifyForgetPasswordOtpSchema), AS.verifyForgetPasswordOtp);
 authRouter.post("/reset-password", validation(AV.resetPasswordSchema), AS.resetPassword);
-authRouter.post("/google-signup", AS.googleSignUp);
 authRouter.post("/refresh-token", validation(AV.refreshTokenSchema), AS.refreshToken);
-
+authRouter.post('/google-login', AS.loginWithGmail);
+authRouter.post('/google-signup', AS.signUpWithGmail)
 
 export default authRouter;

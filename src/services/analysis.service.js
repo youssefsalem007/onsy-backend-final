@@ -109,11 +109,13 @@ function generateFallbackRealtimeAnalysis(eeg, logs, messages) {
   
   if (logs && logs.length > 0) {
     const recent = logs[0];
-    if (recent.mood === 'Sad' || recent.mood === 'Angry') {
+    if (recent.mood <= 4) {
       risk = Math.max(risk, 60);
       level = Math.max(level, 3);
-      dom = recent.mood.toLowerCase();
+      dom = 'sadness';
       recs.push("We noticed you logged a negative mood. Consider reaching out to a friend.");
+    } else if (recent.mood >= 8) {
+      dom = 'happiness';
     }
   }
 

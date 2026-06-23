@@ -33,11 +33,11 @@ const authSchema = new mongoose.Schema(
     gender: {
       type: String,
       enum: Object.values(genderEnum),
-      required: true,
+      required: false,
     },
     age: {
       type: Number,
-      required: true,
+      required: false,
     },
     isVerified: {
       type: Boolean,

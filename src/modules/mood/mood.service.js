@@ -64,6 +64,7 @@ export const updateMood = async (req,res,next) =>{
     if(!updatedMood){
         throw new Error("You already updated your mood today")
     }
+    triggerRealtimeAnalysis(req.auth._id);
     successResponse({res, message:"Mood updated", data: updatedMood})
 }
 

@@ -11,7 +11,9 @@ import moodRouter from "./modules/mood/mood.controller.js";
 import aiRouter from "./modules/ai/ai.controller.js";
 import eegRouter from "./modules/eeg/eeg.controller.js";
 import analysisRouter from "./modules/analysis/analysis.controller.js";
-import { rateLimiter } from "./common/middleware/rateLimiter.js";
+import rateLimiter from "./common/middleware/rateLimiter.js";
+
+
 export const app = express();
 
 const isProd = process.env.NODE_ENV === "production";

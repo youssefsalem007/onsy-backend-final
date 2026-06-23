@@ -65,45 +65,45 @@ export const signUp = async (req, res, next) => {
   });
 };
 
-export const googleSignUp = async (req, res, next) => {
-  const { idToken } = req.body;
-  const client = new OAuth2Client();
+// export const googleSignUp = async (req, res, next) => {
+//   const { idToken } = req.body;
+//   const client = new OAuth2Client();
 
-  const ticket = await client.verifyIdToken({
-    idToken,
-    audience: GOOGLE_CLIENT_ID,
-  });
-  const payload = ticket.getPayload();
+//   const ticket = await client.verifyIdToken({
+//     idToken,
+//     audience: GOOGLE_CLIENT_ID,
+//   });
+//   const payload = ticket.getPayload();
 
-  const { email, email_verified, name } = payload;
+//   const { email, email_verified, name } = payload;
 
-  let auth = await db_service.findOne({ model: authModel, filter: { email } });
+//   let auth = await db_service.findOne({ model: authModel, filter: { email } });
 
-  if (!auth) {
-    auth = await db_service.create({
-      model: authModel,
-      data: {
-        email,
-        isVerified: email_verified,
-        fullName: name,
-        provider: providerEnum.google,
-      },
-    });
-  }
+//   if (!auth) {
+//     auth = await db_service.create({
+//       model: authModel,
+//       data: {
+//         email,
+//         isVerified: email_verified,
+//         fullName: name,
+//         provider: providerEnum.google,
+//       },
+//     });
+//   }
 
-  if (auth.provider == providerEnum.system) {
-    throw new Error("log in using system", { cause: 400 });
-  }
+//   if (auth.provider == providerEnum.system) {
+//     throw new Error("log in using system", { cause: 400 });
+//   }
 
-  const jwtid = randomUUID();
-  const access_token = GenerateToken({
-    payload: { id: auth._id, email: auth.email },
-    secret_key: ACCESS_SECRET_KEY,
-    options: { expiresIn: "1h", jwtid },
-  });
+//   const jwtid = randomUUID();
+//   const access_token = GenerateToken({
+//     payload: { id: auth._id, email: auth.email },
+//     secret_key: ACCESS_SECRET_KEY,
+//     options: { expiresIn: "1h", jwtid },
+//   });
 
-  successResponse({ res, message: "success signIn", data: { access_token } });
-};
+//   successResponse({ res, message: "success signIn", data: { access_token } });
+// };
 
 export const verifyOtp = async (req, res, next) => {
   const { email, otp } = req.body;
@@ -315,4 +315,81 @@ export const resetPassword = async (req, res, next) => {
   await deleteKey(otp_key({ email, subject: emailEnum.resetPassword }));
 
   successResponse({ res, status: 200, message: "Password reset successfully" });
+};
+
+const verifyGoogleAccount = async (idToken) => {
+  const client = new OAuth2Client();
+  const ticket = await client.verifyIdToken({
+    idToken,
+    audience: GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+  if (!payload?.email_verified) {
+    throw new Error('invalid google token');
+  }
+  return payload;
+};
+
+export const loginWithGmail = async (req, res, next) => {
+  const { idToken } = req.body;
+  const payload = await verifyGoogleAccount(idToken);
+  const user = await db_service.findOne({
+    model: authModel,
+    filter: {
+      email: payload.email,
+      provider: providerEnum.google,
+    },
+  });
+
+  if (!user) {
+    return next(new Error('Invalid account provider or not registered account', { cause: 404 }));
+  }
+  
+  const jwtid = randomUUID();
+  const access_token = GenerateToken({
+    payload: { id: user._id, email: user.email },
+    secret_key: ACCESS_SECRET_KEY,
+    options: { expiresIn: "1h", jwtid },
+  });
+
+  successResponse({ res, message: "success signIn", data: { access_token } });
+};
+
+export const signUpWithGmail = async (req, res, next) => {
+  const { idToken } = req.body;
+  const payload = await verifyGoogleAccount(idToken);
+  const checkExist = await db_service.findOne({
+    model: authModel,
+    filter: {
+      email: payload.email, provider: providerEnum.google
+    },
+  });
+  
+  if (checkExist) {
+    if (checkExist.provider != providerEnum.google) {
+      return next(new Error('Invalid account provider', { cause: 400 }));
+    }
+    return loginWithGmail(req, res, next);
+  }
+
+  const account = await db_service.create({
+    model: authModel,
+    data: {
+      firstName: payload.given_name,
+      lastName: payload.family_name,
+      email: payload.email,
+      isVerified: true,
+      provider: providerEnum.google,
+    },
+  });
+  
+  const jwtid = randomUUID();
+  const access_token = GenerateToken({
+    payload: { id: account._id, email: account.email },
+    secret_key: ACCESS_SECRET_KEY,
+    options: { expiresIn: "1h", jwtid },
+  });
+
+  successResponse({ res, status: 201, message: "success signUp", data: { access_token } });
 };

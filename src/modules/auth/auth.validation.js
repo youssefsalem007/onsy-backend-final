@@ -70,3 +70,19 @@ export const refreshTokenSchema = {
     refresh_token: joi.string().required(),
   }).required(),
 };
+
+export const googleLoginSchema = {
+  body: joi.object({
+    idToken: joi.string().required(),
+  }).required(),
+};
+
+export const googleSignUpSchema = {
+  body: joi.object({
+    idToken: joi.string().required(),
+    age: joi.number().min(1).max(100).optional(),
+    gender: joi.string().valid(...Object.values(genderEnum)).optional(),
+    firstName: joi.string().optional(),
+    lastName: joi.string().optional(),
+  }).required(),
+};
