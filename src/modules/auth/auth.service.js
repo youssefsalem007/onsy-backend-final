@@ -178,13 +178,13 @@ export const signIn = async (req, res, next) => {
 
   const jwtid = randomUUID();
   const access_token = GenerateToken({
-    payload: { id: auth._id, email: auth.email },
+    payload: { id: auth._id, email: auth.email, role: auth.role },
     secret_key: ACCESS_SECRET_KEY,
     options: { expiresIn: "1h", jwtid },
   });
 
   const refresh_token = GenerateToken({
-    payload: { id: auth._id, email: auth.email },
+    payload: { id: auth._id, email: auth.email, role: auth.role },
     secret_key: REFRESH_SECRET_KEY,
     options: { expiresIn: "7d", jwtid },
   });
@@ -219,7 +219,7 @@ export const refreshToken = async (req, res, next) => {
 
   const jwtid = randomUUID();
   const accessToken = GenerateToken({
-    payload:{id: auth._id, email: auth.email},
+    payload:{id: auth._id, email: auth.email, role: auth.role},
     secret_key: ACCESS_SECRET_KEY,
     options: {expiresIn:"2h", jwtid}
   })
@@ -317,18 +317,32 @@ export const resetPassword = async (req, res, next) => {
   successResponse({ res, status: 200, message: "Password reset successfully" });
 };
 
-const verifyGoogleAccount = async (idToken) => {
-  const client = new OAuth2Client();
-  const ticket = await client.verifyIdToken({
-    idToken,
-    audience: GOOGLE_CLIENT_ID,
-  });
-
-  const payload = ticket.getPayload();
-  if (!payload?.email_verified) {
-    throw new Error('invalid google token');
+const verifyGoogleAccount = async (token) => {
+  try {
+    const client = new OAuth2Client();
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.email_verified) {
+      throw new Error('invalid google token');
+    }
+    return payload;
+  } catch (error) {
+    // Fallback for access_token from useGoogleLogin custom buttons
+    const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      throw new Error('invalid google token');
+    }
+    const payload = await res.json();
+    if (!payload?.email_verified) {
+      throw new Error('invalid google token');
+    }
+    return payload;
   }
-  return payload;
 };
 
 export const loginWithGmail = async (req, res, next) => {
@@ -348,7 +362,7 @@ export const loginWithGmail = async (req, res, next) => {
   
   const jwtid = randomUUID();
   const access_token = GenerateToken({
-    payload: { id: user._id, email: user.email },
+    payload: { id: user._id, email: user.email, role: user.role },
     secret_key: ACCESS_SECRET_KEY,
     options: { expiresIn: "1h", jwtid },
   });
@@ -386,7 +400,7 @@ export const signUpWithGmail = async (req, res, next) => {
   
   const jwtid = randomUUID();
   const access_token = GenerateToken({
-    payload: { id: account._id, email: account.email },
+    payload: { id: account._id, email: account.email, role: account.role },
     secret_key: ACCESS_SECRET_KEY,
     options: { expiresIn: "1h", jwtid },
   });

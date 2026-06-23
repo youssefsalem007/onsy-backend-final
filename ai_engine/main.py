@@ -309,13 +309,18 @@ def analyze_realtime(input: RealtimeInput):
     if eeg_relax > 0.5:
         adjusted_risk -= (eeg_relax * 15)
         
-    # Factor in raw mood logs (assuming 1-5 scale, 1 being worst, 5 being best)
+    # Factor in raw mood logs (0-10 scale, 0 being worst, 10 being best)
     if input.moodLogs:
-        avg_mood = sum(m.get("mood", 3) for m in input.moodLogs) / len(input.moodLogs)
-        if avg_mood <= 2:
-            adjusted_risk += 10
-        elif avg_mood >= 4:
-            adjusted_risk -= 10
+        latest_mood = input.moodLogs[0].get("mood", 5)
+        if latest_mood <= 4:
+            adjusted_risk += 20
+            # Strong negative mood overrides text if text was neutral/positive
+            if base_result.dominant_emotion not in ["sadness", "anxiety", "fear", "anger", "disgust"]:
+                base_result.dominant_emotion = "sadness"
+        elif latest_mood >= 8:
+            adjusted_risk -= 20
+            # Strong positive mood overrides text if text was neutral/negative
+            base_result.dominant_emotion = "happiness"
 
     adjusted_risk = max(0.0, min(100.0, round(adjusted_risk, 1)))
     

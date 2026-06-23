@@ -1,16 +1,20 @@
 import mongoose from "mongoose";
-import { genderEnum, providerEnum } from "../../common/enum/auth.enum.js";
+import { genderEnum, providerEnum, roleEnum } from "../../common/enum/auth.enum.js";
 
 const authSchema = new mongoose.Schema(
   {
     firstName: {
       type: String,
-      required: true,
+      required: function () {
+        return this.provider == providerEnum.google ? false : true;
+      },
       trim: true,
     },
     lastName: {
       type: String,
-      required: true,
+      required: function () {
+        return this.provider == providerEnum.google ? false : true;
+      },
       trim: true,
     },
     email: {
@@ -33,24 +37,25 @@ const authSchema = new mongoose.Schema(
     gender: {
       type: String,
       enum: Object.values(genderEnum),
-      required: false,
+      required: function () {
+        return this.provider == providerEnum.google ? false : true;
+      },
     },
     age: {
       type: Number,
-      required: false,
+      required: function () {
+        return this.provider == providerEnum.google ? false : true;
+      },
     },
     isVerified: {
       type: Boolean,
       default: false,
     },
-    /*otp: {
-      code: { type: String },
-      expiresAt: { type: Date },
+    role: {
+      type: String,
+      enum: Object.values(roleEnum),
+      default: roleEnum.user,
     },
-    isOtpVerified: {
-      type: Boolean,
-      default: false,
-    }*/
     changeCredential:Date
   },
   {

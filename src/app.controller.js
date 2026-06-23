@@ -11,6 +11,7 @@ import moodRouter from "./modules/mood/mood.controller.js";
 import aiRouter from "./modules/ai/ai.controller.js";
 import eegRouter from "./modules/eeg/eeg.controller.js";
 import analysisRouter from "./modules/analysis/analysis.controller.js";
+import adminRouter from "./modules/admin/admin.controller.js";
 import rateLimiter from "./common/middleware/rateLimiter.js";
 
 
@@ -32,6 +33,7 @@ const bootstrap = async () => {
   app.use("/ai", aiRouter); 
   app.use("/eeg", eegRouter);
   app.use("/analysis", analysisRouter);
+  app.use("/admin", adminRouter);
 
   await checkConnectionDB();
   await connectRedis();
