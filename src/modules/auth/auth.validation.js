@@ -64,3 +64,9 @@ export const resetPasswordSchema = {
     })
     .required(),
 };
+
+export const refreshTokenSchema = {
+  body: joi.object({
+    refresh_token: joi.string().required(),
+  }).required(),
+};

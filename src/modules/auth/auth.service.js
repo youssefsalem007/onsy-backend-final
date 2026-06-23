@@ -21,6 +21,7 @@ import {
   setValue,
 } from "../../DB/redis/redis.service.js";
 import { emailEnum } from "../../common/enum/email.enum.js";
+import jwt from "jsonwebtoken"
 
 export const signUp = async (req, res, next) => {
   const { firstName, lastName, email, password, confirmPassword, gender, age } =req.body;
@@ -194,6 +195,40 @@ export const signIn = async (req, res, next) => {
     message: "Successful signIn",
     data: { access_token, refresh_token },
   });
+};
+
+export const refreshToken = async (req, res, next) => {
+  const {refresh_token} = req.body
+  const decoded = jwt.verify(refresh_token, REFRESH_SECRET_KEY)
+  if(!decoded?.id || !decoded?.jti){
+    return next(new Error("invalid refresh token", { cause: 401 }))
+  }
+
+  const revoked = await get(revoked_key(decoded.id, decoded.jti))
+  if(revoked) return next(new Error("refresh token has been revoked", { cause: 401 }))
+
+  const auth = await db_service.findById({
+    model: authModel,
+    id: decoded.id,
+    select: "-password",
+  })
+  if(!auth) return next(new Error("user not found", {cause:404}))
+  if(auth?.changeCredential?.getTime() > decoded.iat * 1000){
+    return next(new Error("invalid refresh token", {cause:401}))
+  }
+
+  const jwtid = randomUUID();
+  const accessToken = GenerateToken({
+    payload:{id: auth._id, email: auth.email},
+    secret_key: ACCESS_SECRET_KEY,
+    options: {expiresIn:"2h", jwtid}
+  })
+
+  successResponse({
+    res, 
+    status: 200, 
+    message: "token refreshed successfully", 
+    data: {accessToken}})
 };
 
 export const signOut = async (req, res, next) => {
